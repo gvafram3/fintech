@@ -1,11 +1,13 @@
 import 'package:fintech/core/routes/app_routes.dart';
+import 'package:fintech/core/services/auth_service.dart';
 import 'package:fintech/features/owner/settings/screens/business_info_screen.dart';
 import 'package:fintech/features/owner/settings/screens/manage_categores_screen.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
+import 'profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({Key? key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -13,6 +15,36 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
+  String _fullName = '';
+  String _email = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final authService = AuthService();
+    final userData = await authService.getUserData();
+    if (userData != null) {
+      setState(() {
+        _fullName = userData['fullName'] as String? ?? '';
+        _email = userData['email'] as String? ?? '';
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _getInitial() {
+    if (_fullName.isEmpty) return 'U';
+    return _fullName[0].toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,10 +66,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: AppColors.primary,
                     shape: BoxShape.circle,
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      'V',
-                      style: TextStyle(
+                      _getInitial(),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 32,
                         fontWeight: FontWeight.w700,
@@ -46,18 +78,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Visca',
-                  style: TextStyle(
+                Text(
+                  _isLoading ? 'Loading...' : _fullName,
+                  style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'visca@example.com',
-                  style: TextStyle(
+                Text(
+                  _isLoading ? '' : _email,
+                  style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
@@ -498,15 +530,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, AppRoutes.login);
+            onPressed: () async {
+              Navigator.pop(context);
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Logged out successfully'),
-                  backgroundColor: AppColors.success,
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
+                  ),
                 ),
               );
+
+              try {
+                // Sign out from Firebase
+                final authService = AuthService();
+                await authService.signOut();
+
+                // Navigate to login and remove all previous routes
+                if (mounted) {
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    AppRoutes.login,
+                    (route) => false,
+                  );
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Logged out successfully'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.pop(context); // Close loading dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Logout failed: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text(
               'Logout',
@@ -522,39 +592,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-// Placeholder screens for navigation - You'll create these later
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+// Placeholder screens for navigation - TODO
+// class ProfileScreen extends StatelessWidget {
+//   const ProfileScreen({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Profile',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-      body: const Center(
-        child: Text(
-          'Profile Screen - Coming Soon',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
-        ),
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: AppColors.background,
+//       appBar: AppBar(
+//         backgroundColor: AppColors.surface,
+//         elevation: 0,
+//         leading: IconButton(
+//           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//         title: const Text(
+//           'Profile',
+//           style: TextStyle(
+//             color: AppColors.textPrimary,
+//             fontSize: 20,
+//             fontWeight: FontWeight.w700,
+//           ),
+//         ),
+//       ),
+//       body: const Center(
+//         child: Text(
+//           'Profile Screen - Coming Soon',
+//           style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 // class BusinessInfoScreen extends StatelessWidget {
 //   const BusinessInfoScreen({Key? key}) : super(key: key);

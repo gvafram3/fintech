@@ -50,10 +50,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    Navigator.pushReplacementNamed(
-                      context,
-                      AppRoutes.roleSelect,
-                    );
+                    Navigator.pushReplacementNamed(context, AppRoutes.login);
                   },
                   child: const Text(
                     'Skip',
@@ -117,10 +114,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         curve: Curves.easeInOut,
                       );
                     } else {
-                      Navigator.pushReplacementNamed(
-                        context,
-                        AppRoutes.roleSelect,
-                      );
+                      Navigator.pushReplacementNamed(context, AppRoutes.login);
                     }
                   },
                   child: Text(

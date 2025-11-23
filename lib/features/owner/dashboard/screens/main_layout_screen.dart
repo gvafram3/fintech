@@ -4,7 +4,9 @@ import 'package:fintech/features/owner/reports/screens/reports_screen.dart';
 import 'package:fintech/features/owner/settings/screens/settings_screen.dart';
 import 'package:fintech/features/owner/transactions/screens/transactions_screen.dart';
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+import '../../../../core/routes/app_routes.dart';
+import '../../../../core/services/auth_service.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class MainLayoutScreen extends StatefulWidget {
   const MainLayoutScreen({Key? key}) : super(key: key);
@@ -15,6 +17,7 @@ class MainLayoutScreen extends StatefulWidget {
 
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
   int _currentIndex = 0;
+  String _userFirstName = '';
 
   List<Widget> get _screens => [
     DashboardScreen(
@@ -31,10 +34,29 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadUserFirstName();
+  }
+
+  Future<void> _loadUserFirstName() async {
+    final authService = AuthService();
+    final userData = await authService.getUserData();
+    if (userData != null && userData['fullName'] != null) {
+      final fullName = userData['fullName'] as String;
+      final firstName = fullName.split(' ').first;
+      setState(() {
+        _userFirstName = firstName;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         centerTitle: false,
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -60,7 +82,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             ),
             if (_currentIndex == 0)
               Text(
-                'Welcome back, Visca',
+                'Welcome back, $_userFirstName',
                 style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 12,
@@ -79,15 +101,21 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   ),
                   onPressed: () {},
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
-                    child: Icon(
-                      Icons.person,
-                      color: AppColors.primary,
-                      size: 20,
+
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.profile);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppColors.primary.withOpacity(0.1),
+                      child: Icon(
+                        Icons.person,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ),

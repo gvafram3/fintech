@@ -28,18 +28,6 @@ class _DebtManagementScreenState extends State<DebtManagementScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   backgroundColor: AppColors.surface,
-      //   elevation: 0,
-      //   title: const Text(
-      //     'Debt Management',
-      //     style: TextStyle(
-      //       color: AppColors.textPrimary,
-      //       fontSize: 20,
-      //       fontWeight: FontWeight.w700,
-      //     ),
-      //   ),
-      // ),
       body: Column(
         children: [
           // Summary Cards

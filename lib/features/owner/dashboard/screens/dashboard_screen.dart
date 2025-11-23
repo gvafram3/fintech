@@ -6,24 +6,6 @@ import '../../../../core/routes/app_routes.dart';
 import '../../transactions/screens/add_transaction_screen.dart';
 import '../../transactions/screens/transactions_screen.dart'; // << added
 
-// Assuming you have the theme file imported
-// import 'theme.dart';
-
-// class AppColors {
-//   static const Color primary = Color(0xFF2563EB);
-//   static const Color primaryDark = Color(0xFF1E40AF);
-//   static const Color secondary = Color(0xFF14B8A6);
-//   static const Color background = Color(0xFFF8FAFC);
-//   static const Color surface = Color(0xFFFFFFFF);
-//   static const Color textPrimary = Color(0xFF0F172A);
-//   static const Color textSecondary = Color(0xFF64748B);
-//   static const Color textLight = Color(0xFF94A3B8);
-//   static const Color success = Color(0xFF10B981);
-//   static const Color error = Color(0xFFEF4444);
-//   static const Color warning = Color(0xFFF59E0B);
-//   static const Color border = Color(0xFFE2E8F0);
-// }
-
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToTransactions;
   const DashboardScreen({super.key, this.onNavigateToTransactions});
@@ -37,48 +19,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.delayed(Duration(seconds: 1));
-        },
-        child: SingleChildScrollView(
-          physics: AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Summary Cards Section
-              _buildSummaryCards(),
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Future.delayed(Duration(seconds: 1));
+      },
+      child: SingleChildScrollView(
+        physics: AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Summary Cards Section
+            _buildSummaryCards(),
 
-              SizedBox(height: 24),
+            SizedBox(height: 24),
 
-              // Period Selector
-              _buildPeriodSelector(),
+            // Period Selector
+            _buildPeriodSelector(),
 
-              SizedBox(height: 16),
+            SizedBox(height: 16),
 
-              // Profit Trend Chart
-              _buildProfitChart(),
+            // Profit Trend Chart
+            _buildProfitChart(),
 
-              SizedBox(height: 16),
+            SizedBox(height: 16),
 
-              // Expenses Chart
-              _buildExpensesChart(),
+            // Expenses Chart
+            _buildExpensesChart(),
 
-              SizedBox(height: 24),
+            SizedBox(height: 24),
 
-              // Quick Actions
-              _buildQuickActions(),
+            // Quick Actions
+            _buildQuickActions(),
 
-              SizedBox(height: 24),
+            SizedBox(height: 24),
 
-              // Recent Activities
-              _buildRecentActivities(),
+            // Recent Activities
+            _buildRecentActivities(),
 
-              SizedBox(height: 80), // Space for bottom nav
-            ],
-          ),
+            SizedBox(height: 80), // Space for bottom nav
+          ],
         ),
       ),
     );
