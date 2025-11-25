@@ -421,7 +421,8 @@ class _LoginScreenState extends State<LoginScreen> {
         // Validate that selected role matches registered role
         if (userRole.toLowerCase() != _selectedRole!.toLowerCase()) {
           _showErrorDialog(
-            'Role mismatch! You registered as ${_capitalizeRole(userRole)}.\nPlease select the correct role to login.',
+            'No user exists with the selected role. Please check your credentials and try again.',
+            // You registered as ${_capitalizeRole(userRole)}.,
           );
           await _authService.signOut();
           return;

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/auth_service.dart';
 
@@ -40,45 +42,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final authService = AuthService();
 
-      // Add timeout to prevent infinite loading
       final userData = await authService.getUserData().timeout(
         const Duration(seconds: 5),
-        onTimeout: () => null,
       );
-      final userRole = await authService.getUserRole().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => null,
-      );
+
+      if (userData == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      // Format date
+      String formattedDate = 'N/A';
+      try {
+        if (userData['createdAt'] != null) {
+          final timestamp = userData['createdAt'];
+          DateTime dateTime;
+
+          if (timestamp is Timestamp) {
+            dateTime = timestamp.toDate();
+          } else if (timestamp is DateTime) {
+            dateTime = timestamp;
+          } else {
+            dateTime = DateTime.now();
+          }
+
+          formattedDate = DateFormat('MMM dd, yyyy').format(dateTime);
+        }
+      } catch (e) {
+        print('Error parsing date: $e');
+      }
 
       if (mounted) {
         setState(() {
-          _fullName = userData?['fullName'] as String? ?? 'User';
-          _email = userData?['email'] as String? ?? 'user@example.com';
-          _nameController.text = _fullName;
-
-          if (userData?['createdAt'] != null) {
-            try {
-              final createdAt = userData!['createdAt'] as DateTime;
-              _memberSince = DateFormat('MMMM dd, yyyy').format(createdAt);
-            } catch (e) {
-              _memberSince = 'Recently joined';
-            }
-          } else {
-            _memberSince = 'Recently joined';
-          }
-
-          _userRole = userRole ?? 'User';
+          _fullName = userData['fullName'] ?? '';
+          _email = userData['email'] ?? '';
+          _userRole = userData['role'] ?? 'accountant';
+          _memberSince = formattedDate;
           _isLoading = false;
         });
+      }
+    } on TimeoutException {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to load user data. Please try again.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     } catch (e) {
       print('Error loading user data: $e');
       if (mounted) {
         setState(() {
-          _fullName = 'User';
-          _email = 'user@example.com';
-          _memberSince = 'Recently joined';
-          _userRole = 'User';
           _isLoading = false;
         });
       }

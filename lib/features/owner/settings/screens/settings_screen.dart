@@ -1,10 +1,15 @@
 import 'package:fintech/core/routes/app_routes.dart';
 import 'package:fintech/core/services/auth_service.dart';
+import 'package:fintech/core/services/role_service.dart';
+import 'package:fintech/features/owner/settings/screens/backup_screen.dart';
 import 'package:fintech/features/owner/settings/screens/business_info_screen.dart';
 import 'package:fintech/features/owner/settings/screens/manage_categores_screen.dart';
+import 'package:fintech/features/owner/settings/screens/notifications_screen.dart';
+import 'package:fintech/features/owner/settings/screens/user_management_screen.dart';
+import 'package:fintech/features/owner/settings/screens/profile_screen.dart';
+import 'package:fintech/features/owner/settings/screens/exportdata_screen.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
-import 'profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key});
@@ -119,66 +124,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () => _navigateToBusinessInfo(),
                 ),
                 _buildDivider(),
-                _buildSettingsTile(
-                  icon: Icons.notifications_outlined,
-                  title: 'Notifications',
-                  trailing: Switch(
-                    value: _notificationsEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _notificationsEnabled = value;
-                      });
-                    },
-                    activeColor: AppColors.primary,
-                  ),
-                  showArrow: false,
-                  badge: _notificationsEnabled ? '8' : null,
-                ),
+                // _buildSettingsTile(
+                //   icon: Icons.notifications_outlined,
+                //   title: 'Notifications',
+                //   trailing: Switch(
+                //     value: _notificationsEnabled,
+                //     onChanged: (value) {
+                //       setState(() {
+                //         _notificationsEnabled = value;
+                //       });
+                //     },
+                //     activeColor: AppColors.primary,
+                //   ),
+                //   showArrow: false,
+                //   badge: _notificationsEnabled ? '8' : null,
+                // ),
               ],
             ),
           ),
 
           const SizedBox(height: 8),
 
-          // Preferences Section
-          _buildSectionHeader('Preferences'),
+          // Team & Administration Section
+          _buildSectionHeader('Team & Administration'),
           Container(
             color: AppColors.surface,
             child: Column(
               children: [
                 _buildSettingsTile(
-                  icon: Icons.category_outlined,
-                  title: 'Manage Categories',
-                  onTap: () => _navigateToManageCategories(),
+                  icon: Icons.people_outline,
+                  title: 'User Management',
+                  subtitle: 'Manage managers and account officers',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UserManagementScreen(),
+                    ),
+                  ),
                 ),
                 _buildDivider(),
                 _buildSettingsTile(
-                  icon: Icons.security_outlined,
-                  title: 'Security',
-                  onTap: () => _navigateToSecurity(),
+                  icon: Icons.notifications_outlined,
+                  title: 'Notifications',
+                  subtitle: 'Manage notification preferences',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationsScreen(),
+                    ),
+                  ),
                 ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Data Section
-          _buildSectionHeader('Data'),
-          Container(
-            color: AppColors.surface,
-            child: Column(
-              children: [
+                _buildDivider(),
+                _buildSettingsTile(
+                  icon: Icons.category_outlined,
+                  title: 'Manage Categories',
+                  subtitle: 'Create and edit transaction categories',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ManageCategoriesScreen(),
+                    ),
+                  ),
+                ),
+                _buildDivider(),
                 _buildSettingsTile(
                   icon: Icons.backup_outlined,
-                  title: 'Backup Data',
-                  onTap: () => _showBackupDialog(),
+                  title: 'Backup & Restore',
+                  subtitle: 'Backup your data',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BackupScreen(),
+                    ),
+                  ),
                 ),
                 _buildDivider(),
                 _buildSettingsTile(
                   icon: Icons.file_download_outlined,
                   title: 'Export Data',
-                  onTap: () => _showExportDialog(),
+                  subtitle: 'Export transactions as PDF/CSV',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ExportDataScreen(),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -186,7 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 8),
 
-          // Support Section
+          // Help & Support
           _buildSectionHeader('Support'),
           Container(
             color: AppColors.surface,
@@ -195,7 +225,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildSettingsTile(
                   icon: Icons.help_outline,
                   title: 'Help & Support',
-                  onTap: () => _navigateToHelp(),
+                  subtitle: 'Get help and contact support',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HelpSupportScreen(),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -275,6 +311,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSettingsTile({
     required IconData icon,
     required String title,
+    String? subtitle,
     VoidCallback? onTap,
     Widget? trailing,
     bool showArrow = true,
@@ -289,13 +326,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icon(icon, color: AppColors.textSecondary, size: 24),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                ],
               ),
             ),
             if (badge != null) ...[

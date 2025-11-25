@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
-
-enum TransactionType { sale, expense, salary, debt }
+import '../../../../core/services/transaction_service.dart';
+import '../../../../core/models/transaction_model.dart'; // Import TransactionType from here
+import '../../../../core/services/employee_service.dart';
+import '../../../../core/models/employee_model.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  final TransactionType transactionType;
+  final TransactionType transactionType; // Now uses the imported one
 
   const AddTransactionScreen({Key? key, required this.transactionType})
     : super(key: key);
@@ -16,13 +18,19 @@ class AddTransactionScreen extends StatefulWidget {
 
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _subtitleController = TextEditingController();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
+  final _debtorNameController = TextEditingController();
+
+  final TransactionService _transactionService = TransactionService();
 
   String? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
   DateTime? _selectedDueDate;
   String? _selectedPaymentMethod;
+  bool _isLoading = false;
 
   // Categories for each transaction type
   final Map<TransactionType, List<String>> _categories = {
@@ -67,10 +75,32 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     'Cheque',
   ];
 
+  List<EmployeeModel> _employees = [];
+  EmployeeModel? _selectedEmployee;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.transactionType == TransactionType.salary) {
+      _loadEmployees();
+    }
+  }
+
+  Future<void> _loadEmployees() async {
+    final employeeService = EmployeeService();
+    final employees = await employeeService.getAllEmployees();
+    setState(() {
+      _employees = employees;
+    });
+  }
+
   @override
   void dispose() {
+    _titleController.dispose();
+    _subtitleController.dispose();
     _amountController.dispose();
     _notesController.dispose();
+    _debtorNameController.dispose();
     super.dispose();
   }
 
@@ -105,7 +135,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       case TransactionType.sale:
         return AppColors.primary;
       case TransactionType.expense:
-        return AppColors.secondary;
+        return AppColors.error;
       case TransactionType.salary:
         return AppColors.success;
       case TransactionType.debt:
@@ -166,6 +196,84 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 32),
 
+              // Title Field
+              const Text(
+                'Title',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  hintText: 'e.g., Product Sale',
+                  prefixIcon: Icon(Icons.edit, color: _accentColor),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: _accentColor, width: 2),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a title';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Description/Subtitle Field
+              const Text(
+                'Description',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _subtitleController,
+                decoration: InputDecoration(
+                  hintText: 'e.g., Electronics category',
+                  prefixIcon: Icon(Icons.description, color: _accentColor),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: _accentColor, width: 2),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a description';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
               // Amount Field
               const Text(
                 'Amount',
@@ -209,7 +317,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Debtor Field
+              // Debtor Name Field (Only for Debt)
               if (widget.transactionType == TransactionType.debt) ...[
                 const Text(
                   'Debtor Name',
@@ -221,10 +329,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
-                  controller: _amountController,
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  controller: _debtorNameController,
                   decoration: InputDecoration(
-                    hintText: 'Enter amount',
+                    hintText: 'Enter debtor name',
                     prefixIcon: Icon(
                       Icons.person_2_rounded,
                       color: _accentColor,
@@ -246,10 +353,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter an amount';
-                    }
-                    if (double.tryParse(value) == null) {
-                      return 'Please enter a valid number';
+                      return 'Please enter debtor name';
                     }
                     return null;
                   },
@@ -257,13 +361,95 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 const SizedBox(height: 20),
               ],
 
-              // Category Dropdown except for debt
-              if (widget.transactionType != TransactionType.debt) ...[
+              // Category Dropdown (except for debt)
+              if (widget.transactionType == TransactionType.salary) ...[
+                const Text(
+                  'Select Employee',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _employees.isEmpty
+                    ? Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'No employees found',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/manage-employees',
+                                );
+                              },
+                              child: const Text('Add Employees'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : DropdownButtonFormField<EmployeeModel>(
+                        value: _selectedEmployee,
+                        decoration: InputDecoration(
+                          hintText: 'Select employee',
+                          prefixIcon: const Icon(
+                            Icons.people,
+                            color: AppColors.primary,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                        ),
+                        items: _employees
+                            .map(
+                              (emp) => DropdownMenuItem(
+                                value: emp,
+                                child: Text('${emp.name} - ₵${emp.salary}'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedEmployee = value;
+                            if (value != null &&
+                                _amountController.text.isEmpty) {
+                              _amountController.text = value.salary.toString();
+                            }
+                          });
+                        },
+                        validator: (value) =>
+                            value == null ? 'Please select an employee' : null,
+                      ),
+                const SizedBox(height: 16),
+              ] else if (widget.transactionType != TransactionType.debt) ...[
                 Text(
                   (widget.transactionType == TransactionType.salary)
                       ? 'Employee'
                       : 'Category',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -500,22 +686,27 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _handleSubmit,
+                  onPressed: _isLoading ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _accentColor,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
+                    disabledBackgroundColor: _accentColor.withOpacity(0.5),
                   ),
-                  child: Text(
-                    _buttonText,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : const Text('Add Transaction'),
                 ),
               ),
               const SizedBox(height: 16),
@@ -581,46 +772,55 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     }
   }
 
-  void _handleSubmit() {
-    if (_formKey.currentState!.validate()) {
-      // Validate due date for debt
-      if (widget.transactionType == TransactionType.debt &&
-          _selectedDueDate == null) {
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _transactionService.addTransaction(
+        title: _titleController.text,
+        subtitle: _subtitleController.text,
+        amount: double.parse(_amountController.text),
+        type: widget.transactionType,
+        category: _selectedCategory,
+        description: _notesController.text.isEmpty
+            ? null
+            : _notesController.text,
+        paymentMethod: _selectedPaymentMethod,
+        dueDate: widget.transactionType == TransactionType.debt
+            ? _selectedDueDate
+            : null,
+        debtorName: widget.transactionType == TransactionType.debt
+            ? _debtorNameController.text
+            : null,
+      );
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please select a due date for the debt'),
+            content: Text('Transaction added successfully'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
             backgroundColor: AppColors.error,
           ),
         );
-        return;
       }
-
-      // TODO: Save transaction to backend
-      final transactionData = {
-        'type': widget.transactionType.name,
-        'amount': double.parse(_amountController.text),
-        'category': _selectedCategory,
-        'date': _selectedDate.toIso8601String(),
-        'paymentMethod': _selectedPaymentMethod,
-        'notes': _notesController.text,
-        if (widget.transactionType == TransactionType.debt)
-          'dueDate': _selectedDueDate?.toIso8601String(),
-      };
-
-      print('Transaction Data: $transactionData');
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${widget.transactionType.name.toUpperCase()} recorded successfully!',
-          ),
-          backgroundColor: AppColors.success,
-        ),
-      );
-
-      // Navigate back
-      Navigator.pop(context);
     }
   }
 }

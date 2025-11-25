@@ -2,6 +2,7 @@ import 'package:fintech/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+import '../../../core/models/transaction_model.dart';
 import '../../../core/routes/app_routes.dart';
 import '../transactions/screens/add_transaction_screen.dart';
 import '../transactions/screens/transactions_screen.dart'; // << added

@@ -63,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
               // App Name
               const Text(
-                'FinTrack',
+                'FinFlow',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w700,

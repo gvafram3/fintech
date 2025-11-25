@@ -5,177 +5,201 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Get current user
   User? get currentUser => _auth.currentUser;
+  String get currentUserId => _auth.currentUser?.uid ?? '';
 
-  // Auth state changes stream
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  // Sign up with email and password
+  /// Sign up user and save role
   Future<Map<String, dynamic>> signUp({
     required String email,
     required String password,
     required String fullName,
   }) async {
     try {
+      print('Starting signup for: $email');
+
       // Create user in Firebase Auth
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(email: email, password: password);
-
-      // Update display name
-      await userCredential.user?.updateDisplayName(fullName);
-
-      // Create user document in Firestore
-      await _firestore.collection('users').doc(userCredential.user?.uid).set({
-        'uid': userCredential.user?.uid,
-        'email': email,
-        'fullName': fullName,
-        'createdAt': FieldValue.serverTimestamp(),
-        'role': null, // Will be set after role selection
-      });
-
-      return {
-        'success': true,
-        'message': 'Account created successfully',
-        'user': userCredential.user,
-      };
-    } on FirebaseAuthException catch (e) {
-      return {'success': false, 'message': _getErrorMessage(e.code)};
-    } catch (e) {
-      return {'success': false, 'message': 'An unexpected error occurred'};
-    }
-  }
-
-  // Sign in with email and password
-  Future<Map<String, dynamic>> signIn({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
+      final userId = userCredential.user?.uid;
+      if (userId == null) {
+        throw Exception('Failed to create user');
+      }
+
+      print('User created with ID: $userId');
+
       return {
         'success': true,
-        'message': 'Signed in successfully',
-        'user': userCredential.user,
+        'userId': userId,
+        'message': 'Signup successful',
       };
     } on FirebaseAuthException catch (e) {
-      return {'success': false, 'message': _getErrorMessage(e.code)};
+      print('FirebaseAuthException: ${e.code}');
+      return {'success': false, 'message': _getAuthErrorMessage(e.code)};
     } catch (e) {
-      return {'success': false, 'message': 'An unexpected error occurred'};
+      print('Signup error: $e');
+      return {'success': false, 'message': 'An error occurred: $e'};
     }
   }
 
-  // Sign out
-  Future<void> signOut() async {
-    await _auth.signOut();
-  }
-
-  // Reset password
-  Future<Map<String, dynamic>> resetPassword({required String email}) async {
+  /// Update user role in Firestore
+  Future<void> updateUserRole({
+    required String userId,
+    required String role,
+    required String fullName,
+    String? email,
+  }) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
-      return {'success': true, 'message': 'Password reset email sent'};
-    } on FirebaseAuthException catch (e) {
-      return {'success': false, 'message': _getErrorMessage(e.code)};
+      print('Updating role for user: $userId');
+
+      await _firestore.collection('users').doc(userId).set({
+        'fullName': fullName,
+        'email': email ?? '',
+        'role': role,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'isActive': true,
+      }, SetOptions(merge: true));
+
+      print('User role updated to: $role');
     } catch (e) {
-      return {'success': false, 'message': 'An unexpected error occurred'};
+      print('Error updating user role: $e');
+      rethrow;
     }
   }
 
-  // Update user role
-  Future<void> updateUserRole(String role) async {
+  /// Get user role from Firestore (current user or specific user)
+  Future<String?> getUserRole({String? userId}) async {
     try {
-      if (currentUser != null) {
-        await _firestore.collection('users').doc(currentUser!.uid).update({
-          'role': role,
-          'roleUpdatedAt': FieldValue.serverTimestamp(),
-        });
+      final id = userId ?? currentUserId;
+
+      if (id.isEmpty) {
+        print('No user ID available');
+        return null;
       }
-    } catch (e) {
-      print('Error updating role: $e');
-    }
-  }
 
-  // Get user data
-  Future<Map<String, dynamic>?> getUserData() async {
-    try {
-      if (currentUser != null) {
-        DocumentSnapshot doc = await _firestore
-            .collection('users')
-            .doc(currentUser!.uid)
-            .get();
-        return doc.data() as Map<String, dynamic>?;
-      }
-      return null;
-    } catch (e) {
-      print('Error getting user data: $e');
-      return null;
-    }
-  }
+      final doc = await _firestore.collection('users').doc(id).get();
 
-  // Get user role
-  Future<String?> getUserRole() async {
-    try {
-      if (currentUser != null) {
-        DocumentSnapshot doc = await _firestore
-            .collection('users')
-            .doc(currentUser!.uid)
-            .get();
-        Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
-        return data?['role'] as String?;
-      }
-      return null;
+      return doc.data()?['role'] as String?;
     } catch (e) {
       print('Error getting user role: $e');
       return null;
     }
   }
 
-  // Check if user has selected role
-  Future<bool> hasSelectedRole() async {
+  /// Get current user data
+  Future<Map<String, dynamic>?> getCurrentUserData() async {
     try {
-      if (currentUser != null) {
-        DocumentSnapshot doc = await _firestore
-            .collection('users')
-            .doc(currentUser!.uid)
-            .get();
-        Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
-        return data?['role'] != null;
-      }
-      return false;
+      if (currentUserId.isEmpty) return null;
+
+      final doc = await _firestore.collection('users').doc(currentUserId).get();
+
+      return doc.data();
     } catch (e) {
-      print('Error checking role: $e');
-      return false;
+      print('Error getting user data: $e');
+      return null;
     }
   }
 
-  // Helper method to get user-friendly error messages
-  String _getErrorMessage(String code) {
+  /// Get current user data from Firestore
+  Future<Map<String, dynamic>?> getUserData() async {
+    try {
+      if (currentUserId.isEmpty) return null;
+
+      final doc = await _firestore.collection('users').doc(currentUserId).get();
+
+      if (!doc.exists) return null;
+
+      return doc.data() as Map<String, dynamic>?;
+    } catch (e) {
+      print('Error getting user data: $e');
+      return null;
+    }
+  }
+
+  /// Login user
+  Future<Map<String, dynamic>> login({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      print('Logging in user: $email');
+
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+
+      print('Login successful');
+
+      return {'success': true, 'message': 'Login successful'};
+    } on FirebaseAuthException catch (e) {
+      print('FirebaseAuthException: ${e.code}');
+      return {'success': false, 'message': _getAuthErrorMessage(e.code)};
+    } catch (e) {
+      print('Login error: $e');
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
+
+  /// Sign in user
+  Future<Map<String, dynamic>> signIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      print('Signing in user: $email');
+
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+
+      print('Sign in successful');
+
+      return {'success': true, 'message': 'Sign in successful'};
+    } on FirebaseAuthException catch (e) {
+      print('FirebaseAuthException: ${e.code}');
+      return {'success': false, 'message': _getAuthErrorMessage(e.code)};
+    } catch (e) {
+      print('Sign in error: $e');
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
+
+  /// Sign out user
+  Future<void> signOut() async {
+    try {
+      await _auth.signOut();
+      print('User signed out');
+    } catch (e) {
+      print('Error signing out: $e');
+      rethrow;
+    }
+  }
+
+  /// Forgot password
+  Future<Map<String, dynamic>> resetPassword(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      return {'success': true, 'message': 'Password reset email sent'};
+    } on FirebaseAuthException catch (e) {
+      return {'success': false, 'message': _getAuthErrorMessage(e.code)};
+    } catch (e) {
+      return {'success': false, 'message': 'An error occurred: $e'};
+    }
+  }
+
+  String _getAuthErrorMessage(String code) {
     switch (code) {
-      case 'email-already-in-use':
-        return 'This email is already registered';
-      case 'invalid-email':
-        return 'Invalid email address';
-      case 'operation-not-allowed':
-        return 'Operation not allowed';
-      case 'weak-password':
-        return 'Password is too weak';
-      case 'user-disabled':
-        return 'This account has been disabled';
       case 'user-not-found':
-        return 'No account found with this email';
+        return 'No user found with this email';
       case 'wrong-password':
         return 'Incorrect password';
-      case 'too-many-requests':
-        return 'Too many attempts. Please try again later';
-      case 'network-request-failed':
-        return 'Network error. Check your connection';
+      case 'email-already-in-use':
+        return 'Email already registered';
+      case 'weak-password':
+        return 'Password is too weak';
+      case 'invalid-email':
+        return 'Invalid email address';
       default:
-        return 'An error occurred. Please try again';
+        return 'Authentication error: $code';
     }
   }
 }

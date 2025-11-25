@@ -4,9 +4,10 @@ import 'package:fintech/features/owner/reports/screens/reports_screen.dart';
 import 'package:fintech/features/owner/settings/screens/settings_screen.dart';
 import 'package:fintech/features/owner/transactions/screens/transactions_screen.dart';
 import 'package:flutter/material.dart';
-import '../../../../core/routes/app_routes.dart';
-import '../../../../core/services/auth_service.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../core/routes/app_routes.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/services/role_service.dart';
+import '../../core/theme/app_theme.dart';
 
 class MainLayoutScreen extends StatefulWidget {
   const MainLayoutScreen({Key? key}) : super(key: key);
@@ -18,6 +19,8 @@ class MainLayoutScreen extends StatefulWidget {
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
   int _currentIndex = 0;
   String _userFirstName = '';
+  final RoleService _roleService = RoleService();
+  final AuthService _authService = AuthService();
 
   List<Widget> get _screens => [
     DashboardScreen(
@@ -36,18 +39,40 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   @override
   void initState() {
     super.initState();
+    _checkRoleAndRedirect();
     _loadUserFirstName();
   }
 
+  Future<void> _checkRoleAndRedirect() async {
+    try {
+      final role = await _roleService.getCurrentUserRole();
+
+      print('User role: ${role.value}');
+
+      // For now, only owner sees the
+      // owner layout
+      if (role != UserRole.owner) {
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.managerMainLayout);
+        }
+      }
+    } catch (e) {
+      print('Error checking role: $e');
+    }
+  }
+
   Future<void> _loadUserFirstName() async {
-    final authService = AuthService();
-    final userData = await authService.getUserData();
-    if (userData != null && userData['fullName'] != null) {
-      final fullName = userData['fullName'] as String;
-      final firstName = fullName.split(' ').first;
-      setState(() {
-        _userFirstName = firstName;
-      });
+    try {
+      final userData = await _authService.getUserData();
+      if (userData != null && userData['fullName'] != null) {
+        final fullName = userData['fullName'] as String;
+        final firstName = fullName.split(' ').first;
+        setState(() {
+          _userFirstName = firstName;
+        });
+      }
+    } catch (e) {
+      print('Error loading user name: $e');
     }
   }
 
@@ -73,7 +98,6 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   : _currentIndex == 3
                   ? 'Debts'
                   : 'Settings',
-
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 20,
@@ -91,7 +115,6 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
               ),
           ],
         ),
-
         actions: _currentIndex == 0
             ? [
                 IconButton(
@@ -99,9 +122,10 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                     Icons.notifications_outlined,
                     color: AppColors.textPrimary,
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.pushNamed(context, AppRoutes.notifications);
+                  },
                 ),
-
                 GestureDetector(
                   onTap: () {
                     Navigator.pushNamed(context, AppRoutes.profile);
@@ -135,7 +159,6 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             : null,
       ),
       body: IndexedStack(index: _currentIndex, children: _screens),
-
       bottomNavigationBar: _buildBottomNav(),
     );
   }
